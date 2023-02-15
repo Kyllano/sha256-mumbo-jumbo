@@ -1,5 +1,5 @@
 CC=gcc
-OPT=-Wall -lm
+OPT=-Wall -lm -g
 OBJDIR=bin
 SRCDIR=src
 EXEC=sha
