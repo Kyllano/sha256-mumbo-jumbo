@@ -28,7 +28,6 @@ void print_hex_string(unsigned char* str){
 
 
 void print_message_block(unsigned char* message_block, u_int64_t message_block_lenght){
-    //size_t lenght = strlen((char*) message_block);
     u_int64_t i = 0;
     int j=0;
     while (i < (message_block_lenght)){
@@ -253,10 +252,9 @@ void create_sha(unsigned char* input, unsigned char* output){
     //finally, we compute the actual sha
     u_int32_t* sha = compute_sha(message_schedule, lenght_message_schedule);
     
-    //for (int i=0; i < 8; i++){
-    //    sprintf((char*)output, "%08x",sha[i*8]);
-    //}
+    //on prend la string formatté
     sprintf((char*) output, "%08x%08x%08x%08x%08x%08x%08x%08x",sha[0],sha[1],sha[2],sha[3],sha[4],sha[5],sha[6],sha[7]);
+    
     //I love my memory, and I respect it
     free(message_schedule);
     free(message_block);
