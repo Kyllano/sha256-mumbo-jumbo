@@ -2,18 +2,31 @@
 
 int main(int argc, char const *argv[])
 {
-    unsigned char str [74] = "sha256 rocks!";
+    unsigned char str [] = "chocolatine";
     u_int64_t lenght_message_block;
     u_int32_t lenght_message_schedule;
 
     unsigned char * message_block = str_to_message_block(str, &lenght_message_block);
     //print_message_block(message_block, lenght_message_block);
 
-    u_int32_t* message_schedule = create_message_schedule(message_block, &lenght_message_schedule);
-    //printf("lenght : %ld\n", lenght_message_block);
-    phase1(message_schedule, lenght_message_schedule);
+    u_int32_t* message_schedule = create_message_schedule(message_block, &lenght_message_schedule, lenght_message_block);
+    //print_message_schedule(message_schedule, lenght_message_schedule);
+    change_message_schedule_endian(message_schedule, lenght_message_schedule);
+    //printf("lenght : %d\n", lenght_message_schedule);
     
-    print_message_schedule(message_schedule);
+    u_int32_t* sha = compute_sha(message_schedule, lenght_message_schedule);
+
+
+    printf("sha256");
+    for (int i=0; i < 8; i++){
+        printf("%08x",sha[i]);
+    }
+    printf("\n");
+/*
+    phase1(message_schedule, lenght_message_schedule);
+*/
+
+
 
 /*
     //TEST BLOCK FOR SIGMA lowercase VALUES
@@ -29,8 +42,10 @@ int main(int argc, char const *argv[])
     u_int32_t wout1 = sigma1(w1);
     printf("\ncalcul sigma1 :\n0x%08x\n0x%08x\n", w1, wout1);
 */
-
-    free(message_block);
+    
+    
+    free(sha);
     free(message_schedule);
+    free(message_block);
     return 0;
 }

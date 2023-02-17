@@ -10,9 +10,6 @@
     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
-    u_int32_t h[8] =
-   {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
-
 
 void print_hex_string(unsigned char* str){
     int i=0;
@@ -59,13 +56,18 @@ u_int32_t endian_converter(u_int32_t num){
     return res;
 }
 
-void print_message_schedule(u_int32_t* message_schedule){
-    int j=0;
-    for (int i = 0; i < 64; i++){
+void change_message_schedule_endian(u_int32_t* message_schedule, u_int32_t lenght_message_schedule){
+    for (int i = 0; i < lenght_message_schedule; i++){
+        message_schedule[i] = endian_converter(message_schedule[i]);
+    }
+}
+
+void print_message_schedule(u_int32_t* message_schedule, u_int32_t lenght_message_schedule){
+    for (int i = 0; i < lenght_message_schedule; i++){
         //The number we get
-        //printf("\n->%d\n0x%08x\n", message_schedule[i] ,message_schedule[i]);
+        printf("%d : %u -> 0x%08x\n", i, message_schedule[i] ,message_schedule[i]);
         //how it really is in memory
-        for (int j = 0; j < 4; j++){
+        /*for (int j = 0; j < 4; j++){
             u_int32_t toPrint = message_schedule[i];
             toPrint = (toPrint >> (j*8)) & 0x000000ff;
             printf("0x%02x ", toPrint) ;
@@ -74,7 +76,7 @@ void print_message_schedule(u_int32_t* message_schedule){
         if (j==2){
             j = 0;
             printf("\n");
-        }
+        }*/
     }
 }
 
@@ -119,10 +121,8 @@ u_int32_t SIG1 (u_int32_t w){
 }
 
 u_int32_t choice (u_int32_t a, u_int32_t b, u_int32_t c){
-    u_int32_t w1 = a & b;
-    u_int32_t w2 = (~a) & c;
     
-    u_int32_t wout = w1 ^ w2;
+    u_int32_t wout = (a & b) ^ ((~a) & c);
 
     return wout;
 }
@@ -168,34 +168,83 @@ unsigned char* str_to_message_block(unsigned char* str, u_int64_t* lenght){
 }
 
 
-/*
-ATTNETION, ICI J MET UN TABLEAU DE 64, A CHANGER!!!!
-*/
-u_int32_t* create_message_schedule(unsigned char* message_block, u_int32_t* lenght_message_schedule){
-    //printf("lol : %ld\n", sizeof(char));
-    //int lenght = sizeof(u_int32_t) * 64;
-    //printf("TAILLE : %d\n", lenght);
-    u_int32_t* message_schedule = (u_int32_t*) malloc(sizeof(u_int32_t) * 64);
-    *lenght_message_schedule = 64*4;
 
-    memcpy(message_schedule, message_block, 64);
-    memset(&(message_schedule[16]), 0x00, 192);
+u_int32_t* create_message_schedule(unsigned char* message_block, u_int32_t* lenght_message_schedule, u_int64_t lenght_message_block){
+    //On passe la taille de byte vers bit et on regarde le nombre de bloc de 512 octets
+    u_int32_t nbBlocs = (lenght_message_block*8) / 512;
+    //printf("NB BLOCS : %d\n", nbBlocs);
+
+    u_int32_t* message_schedule = (u_int32_t*) malloc(sizeof(u_int32_t) * 64 * nbBlocs);
+    *lenght_message_schedule = 64*nbBlocs;
+
+    for (u_int32_t bloc_i = 0; bloc_i < nbBlocs; bloc_i++){
+        //memcpy et memset prennent des longueurs en byte
+        memcpy(&message_schedule[64*bloc_i], &message_block[64*bloc_i], 64);
+        memset(&(message_schedule[bloc_i*64+16]), 0x00, 192);
+    }
+
     return message_schedule;
 }
 
 
-//lenght must be in bytes
-void phase1 (u_int32_t* message_schedule, u_int64_t lenght){
-    lenght /= 4;
 
-    printf("ON EST LA : %ld\n", lenght);
 
-    for (int i=16; i < lenght; i++){
-        u_int32_t w1 = endian_converter(message_schedule[i-16]);
-        u_int32_t w2 = endian_converter(sig0(message_schedule[i-15]));
-        u_int32_t w3 = endian_converter(message_schedule[i-7]);
-        u_int32_t w4 = endian_converter(sig1(message_schedule[i-2])); 
-        message_schedule[i] = endian_converter(w1+w2+w3+w4);
-        printf("%d : 0x%08x\n", i, message_schedule[i]);
+u_int32_t* compute_sha (u_int32_t* message_schedule, u_int32_t lenght_message_schedule){
+    u_int32_t hash[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
+    for (u_int32_t bloc_i = 0; bloc_i < (lenght_message_schedule/64); bloc_i ++){
+        //phase1
+        for (int i=16; i < 64; i++){
+            u_int32_t w1 = message_schedule[64*bloc_i + i-16];
+            u_int32_t w2 = sig0(message_schedule[64*bloc_i + i-15]);
+            u_int32_t w3 = message_schedule[64*bloc_i + i-7];
+            u_int32_t w4 = sig1(message_schedule[64*bloc_i + i-2]); 
+            message_schedule[64*bloc_i + i] = w1+w2+w3+w4;
+        }
+
+        //phase 2
+        //initialisation des constantes
+        u_int32_t a = hash[0];
+        u_int32_t b = hash[1];
+        u_int32_t c = hash[2];
+        u_int32_t d = hash[3];
+        u_int32_t e = hash[4];
+        u_int32_t f = hash[5];
+        u_int32_t g = hash[6];
+        u_int32_t h = hash[7];
+
+        for (u_int32_t i =0; i < 64; i++){
+            u_int32_t temp1 = h + SIG1(e) + choice(e,f,g) + k[i] + message_schedule[64*bloc_i + i];
+            u_int32_t temp2 = SIG0(a) + maj(a,b,c);
+            
+            h = g;
+            g = f;
+            f = e;
+            e = d + temp1;
+            d = c;
+            c = b;
+            b = a;
+            a = temp1 + temp2;
+        }
+
+        hash[0] = a + hash[0];
+        hash[1] = b + hash[1];
+        hash[2] = c + hash[2];
+        hash[3] = d + hash[3];
+        hash[4] = e + hash[4];
+        hash[5] = f + hash[5];
+        hash[6] = g + hash[6];
+        hash[7] = h + hash[7];
     }
+
+    u_int32_t* output = malloc(sizeof(u_int32_t) * 8);
+    output[0] = hash[0];
+    output[1] = hash[1];
+    output[2] = hash[2];
+    output[3] = hash[3];
+    output[4] = hash[4];
+    output[5] = hash[5];
+    output[6] = hash[6];
+    output[7] = hash[7];
+
+    return output;
 }
