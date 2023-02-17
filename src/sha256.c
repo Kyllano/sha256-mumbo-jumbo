@@ -64,19 +64,8 @@ void change_message_schedule_endian(u_int32_t* message_schedule, u_int32_t lengh
 
 void print_message_schedule(u_int32_t* message_schedule, u_int32_t lenght_message_schedule){
     for (int i = 0; i < lenght_message_schedule; i++){
-        //The number we get
+        //indice : number in decimal -> how it is in memory
         printf("%d : %u -> 0x%08x\n", i, message_schedule[i] ,message_schedule[i]);
-        //how it really is in memory
-        /*for (int j = 0; j < 4; j++){
-            u_int32_t toPrint = message_schedule[i];
-            toPrint = (toPrint >> (j*8)) & 0x000000ff;
-            printf("0x%02x ", toPrint) ;
-        }
-        j++;
-        if (j==2){
-            j = 0;
-            printf("\n");
-        }*/
     }
 }
 
@@ -116,14 +105,11 @@ u_int32_t SIG1 (u_int32_t w){
     u_int32_t w3 = w >> 25 | w << 7 ;
 
     u_int32_t wout = w1 ^ w2 ^ w3;
-
     return wout;
 }
 
 u_int32_t choice (u_int32_t a, u_int32_t b, u_int32_t c){
-    
     u_int32_t wout = (a & b) ^ ((~a) & c);
-
     return wout;
 }
 
@@ -133,7 +119,6 @@ u_int32_t maj (u_int32_t a, u_int32_t b, u_int32_t c){
     u_int32_t w3 = b & c;
     
     u_int32_t wout = w1 ^ w2 ^w3;
-
     return wout;
 }
 
@@ -247,4 +232,33 @@ u_int32_t* compute_sha (u_int32_t* message_schedule, u_int32_t lenght_message_sc
     output[7] = hash[7];
 
     return output;
+}
+
+/*
+    Please make sure your output is 65 bytes (64 hex characters + '\0')
+*/
+void create_sha(unsigned char* input, unsigned char* output){
+    //keeping track of the lenghts
+    u_int64_t lenght_message_block;
+    u_int32_t lenght_message_schedule;
+
+    //creating the message block and then creating the message schedule from the message block
+    unsigned char * message_block = str_to_message_block(input, &lenght_message_block);
+    u_int32_t* message_schedule = create_message_schedule(message_block, &lenght_message_schedule, lenght_message_block);
+
+    //right now the message schedule is in big endian. If our system is in little endian, we need to make the schedule in little endian as well
+    int isLittleEndian = 1;
+    if (*((char *)&isLittleEndian) == 1) change_message_schedule_endian(message_schedule, lenght_message_schedule);
+    
+    //finally, we compute the actual sha
+    u_int32_t* sha = compute_sha(message_schedule, lenght_message_schedule);
+    
+    //for (int i=0; i < 8; i++){
+    //    sprintf((char*)output, "%08x",sha[i*8]);
+    //}
+    sprintf((char*) output, "%08x%08x%08x%08x%08x%08x%08x%08x",sha[0],sha[1],sha[2],sha[3],sha[4],sha[5],sha[6],sha[7]);
+    //I love my memory, and I respect it
+    free(message_schedule);
+    free(message_block);
+    free(sha);
 }

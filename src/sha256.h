@@ -5,6 +5,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 
 void print_hex_string(unsigned char* str);
@@ -25,5 +26,7 @@ u_int32_t choice (u_int32_t w, u_int32_t a, u_int32_t b);
 u_int32_t maj (u_int32_t w, u_int32_t a, u_int32_t b);
 
 u_int32_t* compute_sha (u_int32_t* message_schedule, u_int32_t lenght_message_schedule);
+
+void create_sha(unsigned char* input, unsigned char* output);
 
 #endif
